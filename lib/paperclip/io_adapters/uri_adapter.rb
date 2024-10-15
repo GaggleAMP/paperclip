@@ -15,6 +15,9 @@ module Paperclip
       @content = download_content
       cache_current_values
       @tempfile = copy_to_tempfile(@content)
+
+    ensure
+      @content.close if @content.respond_to?(:close)
     end
 
     private
@@ -52,15 +55,15 @@ module Paperclip
 
     def download_content
       options = { read_timeout: Paperclip.options[:read_timeout] }.compact
-
-      URI.open(@target, **options)
+      URI.open(@target.to_s, **options)
+    rescue OpenURI::HTTPError => e
+      raise "Failed to download content from #{@target}: #{e.message}"
     end
 
     def copy_to_tempfile(src)
       while data = src.read(16 * 1024)
         destination.write(data)
       end
-      src.close
       destination.rewind
       destination
     end
